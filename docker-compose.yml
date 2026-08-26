@@ -1,0 +1,58 @@
+# halogen — two-container deployment.
+#
+# The single-container form is simpler and is what the README shows:
+#
+#   docker run --rm -p 8731:8731 --device /dev/kfd --device /dev/dri \
+#     --group-add keep-groups --security-opt seccomp=unconfined --ipc=host \
+#     -v $MODELS:/models:ro -v $TOKENIZER:/tokenizer:ro \
+#     ghcr.io/peonist-ai/halogen:0.1.0
+#
+# Use this file instead when you want to restart the front-end without
+# reloading 35.9 GB of weights — the split exists for that one reason.
+#
+#   MODELS=/path/to/models TOKENIZER=/path/to/tokenizer docker compose up -d
+#   docker compose restart api      # seconds, model stays resident
+services:
+  engine:
+    image: ghcr.io/peonist-ai/halogen:0.1.0
+    command: ["engine"]
+    environment:
+      # Separate network namespaces here, so the engine must listen on all
+      # interfaces WITHIN the compose network. It stays UNPUBLISHED to the
+      # host: the token protocol has no authentication and the API is the
+      # only edge that should ever be reachable.
+      HALOGEN_BIND: 0.0.0.0
+      HALOGEN_PORT: "8730"
+      HALOGEN_CHECKPOINT: /models/${CHECKPOINT:-qwen3.8-27b-p1w4d-d2.hgn}
+      HALOGEN_DRAFTER: "${DRAFTER:-2}"
+      # Uncomment to fetch the weights on first start instead of downloading
+      # them yourself. OFF by default: with it unset this container makes no
+      # outbound connections at all. It only fires when the checkpoint is
+      # missing, so restarts do not re-download, and it needs the volume below
+      # mounted read-WRITE (drop the :ro).
+      # HALOGEN_DOWNLOAD: peonist-ai/halogen-qwen3.8-27b
+    volumes:
+      - ${MODELS:?set MODELS to the directory holding your .hgn checkpoint}:/models:ro
+    devices: ["/dev/kfd", "/dev/dri"]
+    group_add: ["keep-groups"]
+    security_opt: ["seccomp:unconfined"]
+    ipc: host
+    ulimits:
+      memlock: -1
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/peonist-ai/halogen:0.1.0
+    command: ["api"]
+    depends_on: [engine]
+    environment:
+      HALOGEN_ENGINE: engine:8730
+      HALOGEN_API_PORT: "8731"
+      HALOGEN_TOKENIZER: /tokenizer
+    ports:
+      - "${API_PORT:-8731}:8731"     # the only published port
+    volumes:
+      # Must be a FLAT directory. HuggingFace cache snapshots are symlinks
+      # into a sibling blobs/, which dangle inside the container — use cp -L.
+      - ${TOKENIZER:?set TOKENIZER to a flat tokenizer directory}:/tokenizer:ro
+    restart: unless-stopped
