@@ -33,7 +33,7 @@ podman run --rm -p 8731:8731 \
   --device /dev/kfd --device /dev/dri --group-add keep-groups \
   --security-opt seccomp=unconfined --ipc=host \
   -v /path/to/models:/models:ro -v /path/to/tokenizer:/tokenizer:ro \
-  ghcr.io/peonist-ai/halogen:0.1.0
+  ghcr.io/peonist-ai/halogen:0.1.1
 ```
 
 An OpenAI-compatible endpoint comes up on `:8731`.
@@ -73,7 +73,7 @@ podman run --rm -p 8731:8731 \
   --security-opt seccomp=unconfined --ipc=host \
   -v ~/halogen-models:/models:ro \
   -v ~/halogen-models/tokenizer:/tokenizer:ro \
-  ghcr.io/peonist-ai/halogen:0.1.0
+  ghcr.io/peonist-ai/halogen:0.1.1
 ```
 
 ### Or let it fetch them for you
@@ -88,7 +88,7 @@ podman run --rm -p 8731:8731 \
   -e HALOGEN_DOWNLOAD=peonist-ai/halogen-qwen3.8-27b \
   -e HALOGEN_TOKENIZER=/models/tokenizer \
   -v ~/halogen-models:/models \
-  ghcr.io/peonist-ai/halogen:0.1.0
+  ghcr.io/peonist-ai/halogen:0.1.1
 ```
 
 Two differences from the manual route. The models volume is mounted
@@ -211,10 +211,10 @@ cooperation from us required.
 podman run --rm --device /dev/kfd --device /dev/dri --group-add keep-groups \
   --security-opt seccomp=unconfined --ipc=host \
   -v /path/to/models:/models:ro -v /path/to/tokenizer:/tokenizer:ro \
-  ghcr.io/peonist-ai/halogen:0.1.0 bench dflash2 256 low 3
+  ghcr.io/peonist-ai/halogen:0.1.1 bench dflash2 256 low 3
 
 # llama-bench-shaped pp/tg sweep, for putting a number beside another engine
-podman run --rm ... ghcr.io/peonist-ai/halogen:0.1.0 \
+podman run --rm ... ghcr.io/peonist-ai/halogen:0.1.1 \
   sweep -p 512,2048,8192 -n 128,256 -d dflash2,mtp -r 3
 ```
 

@@ -5,7 +5,7 @@
 #   podman run --rm -p 8731:8731 --device /dev/kfd --device /dev/dri \
 #     --group-add keep-groups --security-opt seccomp=unconfined --ipc=host \
 #     -v $MODELS:/models:ro -v $TOKENIZER:/tokenizer:ro \
-#     ghcr.io/peonist-ai/halogen:0.1.0
+#     ghcr.io/peonist-ai/halogen:0.1.1
 #
 # Use this file instead when you want to restart the front-end without
 # reloading 35.9 GB of weights — the split exists for that one reason.
@@ -18,7 +18,7 @@
 # `group_add: ["video", "render"]`.
 services:
   engine:
-    image: ghcr.io/peonist-ai/halogen:0.1.0
+    image: ghcr.io/peonist-ai/halogen:0.1.1
     command: ["engine"]
     environment:
       # Separate network namespaces here, so the engine must listen on all
@@ -46,7 +46,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: ghcr.io/peonist-ai/halogen:0.1.0
+    image: ghcr.io/peonist-ai/halogen:0.1.1
     command: ["api"]
     depends_on: [engine]
     environment:
