@@ -276,6 +276,26 @@ is in [`docs/FLAGS.md`](docs/FLAGS.md). These are the ones most people touch:
 Per-request settings — drafter, temperature, top_p, seed, reasoning effort,
 tools — go in the JSON body and override the server defaults.
 
+### The token budget covers thinking, not just the answer
+
+This model reasons before it replies and those tokens count against the budget,
+so a budget that runs out mid-thought does not shorten the answer, it removes
+it: the reply comes back with `finish_reason: "length"`, an empty `content`, and
+the partial reasoning in `reasoning_content`, which most OpenAI clients do not
+display. The per-request default is **8192**, which finished every ordinary
+prompt we measured with room to spare; the ceiling is `HALOGEN_MAX_TOKENS_CAP`.
+
+Any of three field names works, and they mean the same thing here:
+`max_completion_tokens` (current OpenAI Chat Completions), `max_output_tokens`
+(OpenAI Responses), or `max_tokens` (deprecated upstream, still widely sent).
+Send one, or send several as long as they agree; two different values is a 400
+rather than a guess about which you meant. `/health` lists all three under
+`token_budget_aliases` and reports the default as `max_tokens_default`.
+
+If a reply looks empty or cut off, read `finish_reason` first: `"stop"` means
+you have the whole answer, `"length"` means you ran out of budget. Pass a larger
+budget, or `"reasoning_effort": "low"` to make the model think less.
+
 ### Concurrency, and the one trap
 
 **By default halogen serves one request at a time with speculative decoding
@@ -317,9 +337,16 @@ At high reasoning effort decode runs around 10 t/s, so:
 | cap | worst-case request | needs a timeout above |
 |---|---|---|
 | 4,096 | 6.8 min | 410 s |
-| **16,384** *(default)* | **27.3 min** | **1,640 s** — default is 2,400 s |
+| 16,384 | 27.3 min | 1,640 s |
 | 32,768 | 54.6 min | 3,280 s |
-| 65,536 | 109.2 min | 6,550 s |
+| **65,536** *(default)* | **109.2 min** | **6,550 s**, and the default timeout is 7,200 s |
+
+The cap is a ceiling on what a client may ask for, not a promise about
+throughput. Almost nothing reaches it: the model stops on its own when the
+answer is done. It is set high so that a long reasoning problem is not cut off
+by server policy, and the timeout is set above it so that a client who does ask
+for a full-length reply does not 503 the next one in the queue. Lower both
+together if you would rather bound how long one request can hold the GPU.
 
 Asking for more than the cap returns a **400** naming the limit. It is never
 silently truncated — a truncated response and a model that stopped on its own

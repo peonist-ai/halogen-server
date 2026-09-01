@@ -39,8 +39,8 @@ documented as such.
 
 | flag | default | meaning |
 |---|---|---|
-| `HALOGEN_MAX_TOKENS_CAP` | `16384` | Largest `max_tokens` a request may ask for. Exceeding it is a **400**, never a silent truncation — a truncated response and a model that stopped on its own both end with `finish_reason: "length"`, so a client cannot tell them apart. **Coupled to `HALOGEN_QUEUE_TIMEOUT`** — see the README. |
-| `HALOGEN_QUEUE_TIMEOUT` | `2400` | Seconds a queued request waits before `503 engine_busy`. Must exceed the time a full-length request takes, or a long request 503s everyone behind it. |
+| `HALOGEN_MAX_TOKENS_CAP` | `65536` | Largest `max_tokens` a request may ask for. Exceeding it is a **400**, never a silent truncation — a truncated response and a model that stopped on its own both end with `finish_reason: "length"`, so a client cannot tell them apart. **Coupled to `HALOGEN_QUEUE_TIMEOUT`** — see the README. |
+| `HALOGEN_QUEUE_TIMEOUT` | `7200` | Seconds a queued request waits before `503 engine_busy`. Must exceed the time a full-length request takes, or a long request 503s everyone behind it. |
 | `HALOGEN_DRAFTER` | `2` | Default drafter for requests that do not name one: `0` serial, `1` MTP, `2` DFlash2. Output is identical whichever is used; only speed changes. Overridable per request. |
 
 ## Prompt cache
