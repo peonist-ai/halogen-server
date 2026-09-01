@@ -2,7 +2,7 @@
 #
 # The single-container form is simpler and is what the README shows:
 #
-#   docker run --rm -p 8731:8731 --device /dev/kfd --device /dev/dri \
+#   podman run --rm -p 8731:8731 --device /dev/kfd --device /dev/dri \
 #     --group-add keep-groups --security-opt seccomp=unconfined --ipc=host \
 #     -v $MODELS:/models:ro -v $TOKENIZER:/tokenizer:ro \
 #     ghcr.io/peonist-ai/halogen:0.1.0
@@ -10,8 +10,12 @@
 # Use this file instead when you want to restart the front-end without
 # reloading 35.9 GB of weights — the split exists for that one reason.
 #
-#   MODELS=/path/to/models TOKENIZER=/path/to/tokenizer docker compose up -d
-#   docker compose restart api      # seconds, model stays resident
+#   MODELS=/path/to/models TOKENIZER=/path/to/tokenizer podman-compose up -d
+#   podman-compose restart api      # seconds, model stays resident
+#
+# `group_add: keep-groups` below is a PODMAN keyword, so this file is written
+# for podman-compose. Under docker compose, replace it with
+# `group_add: ["video", "render"]`.
 services:
   engine:
     image: ghcr.io/peonist-ai/halogen:0.1.0

@@ -4,6 +4,17 @@
 
 First public release. Container image only; the engine is closed source.
 
+### Fixed
+- **The quickstart commands now say `podman run`, not `docker run`.** They
+  always carried `--group-add keep-groups`, which is a Podman keyword: Podman
+  intercepts it and keeps the caller's supplementary groups, while Docker
+  resolves `--group-add` names against the container's `/etc/group` and fails
+  with `unable to find group keep-groups`. Every command in this project is
+  tested under Podman, so the published `docker run` form had never been run.
+  The README and `docker-compose.yml` now show the Podman form and give the
+  Docker substitution (`--group-add video --group-add render`, or
+  `group_add: ["video", "render"]`).
+
 ### Added
 - OpenAI-compatible endpoint: `/v1/chat/completions`, `/v1/completions`,
   streaming, tool calling, sampling with seeds, reasoning-effort control.

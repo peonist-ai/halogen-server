@@ -29,7 +29,7 @@ Output is also *byte-identical* to serial greedy decode — speculation here is
 a pure speed optimization, verified on every release, not a quality trade.
 
 ```bash
-docker run --rm -p 8731:8731 \
+podman run --rm -p 8731:8731 \
   --device /dev/kfd --device /dev/dri --group-add keep-groups \
   --security-opt seccomp=unconfined --ipc=host \
   -v /path/to/models:/models:ro -v /path/to/tokenizer:/tokenizer:ro \
@@ -37,6 +37,11 @@ docker run --rm -p 8731:8731 \
 ```
 
 An OpenAI-compatible endpoint comes up on `:8731`.
+
+On Docker rather than Podman, replace `--group-add keep-groups` with
+`--group-add video --group-add render`. `keep-groups` is a Podman keyword that
+Docker does not understand: Docker resolves `--group-add` names against the
+container's `/etc/group` and fails with `unable to find group keep-groups`.
 
 ---
 
@@ -63,7 +68,7 @@ directory**, so there is nothing to assemble by hand:
 Then point the container at both:
 
 ```bash
-docker run --rm -p 8731:8731 \
+podman run --rm -p 8731:8731 \
   --device /dev/kfd --device /dev/dri --group-add keep-groups \
   --security-opt seccomp=unconfined --ipc=host \
   -v ~/halogen-models:/models:ro \
@@ -77,7 +82,7 @@ If you would rather not download separately, set `HALOGEN_DOWNLOAD` and the
 container fetches the weights on first start:
 
 ```bash
-docker run --rm -p 8731:8731 \
+podman run --rm -p 8731:8731 \
   --device /dev/kfd --device /dev/dri --group-add keep-groups \
   --security-opt seccomp=unconfined --ipc=host \
   -e HALOGEN_DOWNLOAD=peonist-ai/halogen-qwen3.8-27b \
@@ -100,7 +105,7 @@ starting over.
 connections at all** — no telemetry, no license check, no model fetch. If the
 checkpoint is not on disk where `HALOGEN_CHECKPOINT` points, it says so and
 exits rather than reaching for the network. That default is deliberate: a
-35.9 GB transfer should not begin because someone ran `docker run` to see what
+35.9 GB transfer should not begin because someone ran `podman run` to see what
 would happen.
 
 Model weights are licensed separately from the engine by their original
@@ -203,13 +208,13 @@ cooperation from us required.
 
 ```bash
 # ten real prompt shapes over the HTTP endpoint — the number of record
-docker run --rm --device /dev/kfd --device /dev/dri --group-add keep-groups \
+podman run --rm --device /dev/kfd --device /dev/dri --group-add keep-groups \
   --security-opt seccomp=unconfined --ipc=host \
   -v /path/to/models:/models:ro -v /path/to/tokenizer:/tokenizer:ro \
   ghcr.io/peonist-ai/halogen:0.1.0 bench dflash2 256 low 3
 
 # llama-bench-shaped pp/tg sweep, for putting a number beside another engine
-docker run --rm ... ghcr.io/peonist-ai/halogen:0.1.0 \
+podman run --rm ... ghcr.io/peonist-ai/halogen:0.1.0 \
   sweep -p 512,2048,8192 -n 128,256 -d dflash2,mtp -r 3
 ```
 

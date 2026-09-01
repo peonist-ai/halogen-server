@@ -41,7 +41,7 @@ BIND="${HALOGEN_BIND:-127.0.0.1}"
 # Default-off is deliberate and is not timidity: with it off, this image opens
 # NO outbound connections at all, which is a property worth keeping and which
 # the EULA states. A 35.9 GB transfer should also never start because someone
-# ran `docker run` to see what happens.
+# ran `podman run` to see what happens.
 #
 # Only fires when the checkpoint is genuinely absent, so a restart never
 # re-downloads. huggingface_hub resumes partial files natively, so an
