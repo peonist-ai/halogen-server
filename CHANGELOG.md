@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.1.2
+
+A sampler bug-fix release. **The kernels, the checkpoint format and the weights
+are unchanged**, so every performance and quality number still stands and your
+weights do not need re-downloading. Upgrading is a container pull.
+
+**Greedy output is byte-identical to 0.1.1.** If you run with `temperature: 0`
+— the default — nothing about this release changes what you get. Every fix
+below is on the sampled path, and each one changes sampled output for the
+better, so a sampled request will not reproduce a 0.1.1 result even with the
+same seed.
+
+### Fixed
+
+- **`top_p` very close to 1.0 silently kept every token.** At about `0.9998` or
+  higher the nucleus cut never triggered, so the request was served as though
+  no `top_p` had been set at all — a 200, with the setting quietly doing
+  nothing. Values further from 1.0 were unaffected, which is why this went
+  unnoticed: our own test cases stopped at `0.99`.
+- **`presence_penalty`, `frequency_penalty` and `logit_bias` were ignored when
+  speculative decoding was active.** That is the default configuration, so in
+  practice these three settings did nothing on most sampled requests. The
+  request returned 200 with no indication the setting had been dropped. They
+  now apply on every path, including mid-round: a token penalized by something
+  the model just emitted is penalized before the next tokens are scored.
+- **A rounding gap in the sampler could repeat the previous token.** In rare
+  cases a draw landed in a gap that belonged to no candidate, and the token
+  that came out was the one before it. This was most visible as an occasional
+  stutter in sampled output.
+
+### Changed
+
+- `/health` reports the sampler's behavior under `sampling`, including which
+  fields are implemented and which are rejected rather than ignored.
+
+### If you used sampling on 0.1.1
+
+Requests that set `top_p` above ~0.9998, or that set `presence_penalty`,
+`frequency_penalty` or `logit_bias`, were served with those settings partly or
+wholly inactive. They were not errors and nothing in the response said so, so
+output that looked insufficiently constrained or unusually repetitive was
+likely this rather than your configuration. There is no workaround on 0.1.1
+for the penalty fields under the default drafter; pull 0.1.2.
+
 ## 0.1.1
 
 A bug-fix release. **The engine is unchanged**: no kernel, no checkpoint, no
