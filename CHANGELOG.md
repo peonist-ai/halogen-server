@@ -1,5 +1,89 @@
 # Changelog
 
+## 0.1.3
+
+A serving bug-fix release. **The kernels, the checkpoint format and the weights
+are unchanged**, so every performance and quality number still stands and your
+weights do not need re-downloading. Upgrading is a container pull.
+
+**Greedy output is unchanged**, and that was measured rather than assumed: the
+golden fixtures produce byte-identical output on 0.1.3 and 0.1.2, same
+filtered hashes and same token ids. If you run with `temperature: 0` — the
+default — this release changes nothing about what the model says.
+
+**Streamed replies do change, and that is the point of the second fix below.**
+The leading blank line is gone. If you have a workaround that trims it, you
+can drop it.
+
+### Fixed
+
+- **`/v1/completions` returned a 500 on every request — in 0.1.0, 0.1.1 and
+  0.1.2, every release there has ever been.** The endpoint was listed in this
+  README and reported by `/health` the whole time. Internally it read a set of
+  sampling settings that had been added to the chat endpoint's request model
+  and never to its own, so the first thing it touched raised an error and the
+  request came back as an opaque "internal error". It now works, greedy and
+  sampled, and rejects out-of-range values the same way the chat endpoint does.
+
+  If you tried this route and concluded the server was broken, it was, and
+  only for this route. `/v1/chat/completions` was unaffected.
+
+- **A streamed reply and a non-streamed reply to the same prompt came back
+  slightly different.** Asking with `"stream": true` returned the answer with a
+  leading blank line the non-streamed form did not have, and the reasoning
+  differed by leading or trailing whitespace. The model generated exactly the
+  same tokens either way; the two response builders disagreed about tidying
+  them, and only one of them was trimming.
+
+  One case was more than cosmetic: on a turn where the model called a tool and
+  said nothing else, the non-streamed `content` was `""` and the streamed
+  `content` was a blank line, so a client testing "did the model say anything
+  as well as calling the tool" got different answers depending only on how it
+  had asked.
+
+- **The engine accepted no new connections while it was serving.** It handles
+  one client at a time by design — the API front-end opens a single socket and
+  multiplexes every request over it — but that meant once the front-end
+  connected, nothing else was ever accepted. The kernel completes a few extra
+  connections into a backlog without the engine's involvement, and that backlog
+  was four, so a handful of connection attempts succeeded and every one after
+  them hung for the life of the process.
+
+  Measured on 0.1.2 with a session held: connections one to five succeed, six
+  onward time out, and the engine never recovers. The engine now accepts and
+  queues connections while a session is running — including during a long
+  generation, which on the default serial path can be over an hour — and serves
+  the queue before asking for a new connection.
+
+  If you healthcheck the engine port directly, or run anything else that opens
+  a second connection to it, this is the fix for it. The `docker-compose.yml`
+  in this repository does not healthcheck that port, so a stock deployment
+  would not have shown a symptom.
+
+- **A cancelled request that had not started yet was not actually cancelled.**
+  Cancellation searched the requests that were running but never the queue, so
+  a client that disconnected before its request began still had it generated in
+  full, into a slot nobody was reading. This only applies with
+  `HALOGEN_KV_SLOTS` above 1, where a queue exists. It now costs nothing.
+
+- **The front-end could open several connections to the engine at once, and
+  strand the requests already using the old one.** It reopens the connection
+  when it closes, every request checks that condition, and the reopen was not
+  serialised — so a connection that dropped with work in flight raced all of
+  the waiting callers into opening their own. Measured: six concurrent callers,
+  six connections. Each extra one leaked the previous socket, started a second
+  reader on the same stream, and replaced the table of in-flight requests
+  underneath requests still using them.
+
+### Added
+
+- **`/health` now lists the endpoints the running build serves**, generated
+  from the routing table so it cannot name a route that is not there. This
+  exists because of the first fix above: nothing anywhere listed which routes
+  were supposed to work, so a published route could be dead for three releases
+  with nothing to notice it. The release gate now reads that list and probes
+  every route on it, and fails on a route it has no probe for.
+
 ## 0.1.2
 
 A sampler bug-fix release. **The kernels, the checkpoint format and the weights
