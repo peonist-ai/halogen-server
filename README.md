@@ -267,9 +267,9 @@ is in [`docs/FLAGS.md`](docs/FLAGS.md). These are the ones most people touch:
 | `HALOGEN_TOKENIZER` | `/tokenizer` | flat tokenizer directory |
 | `HALOGEN_API_PORT` | `8731` | the published port |
 | `HALOGEN_DRAFTER` | `2` (DFlash2) | default drafter: `0` serial, `1` MTP, `2` DFlash2 |
-| `HALOGEN_CACHE_MB` | *auto* | prompt cache budget; `0` disables |
-| `HALOGEN_MAX_TOKENS_CAP` | `16384` | largest `max_tokens` a request may ask for — over it is a **400**, never a silent truncation |
-| `HALOGEN_QUEUE_TIMEOUT` | `2400` | seconds a queued request will wait — **coupled to the cap**, see below |
+| `HALOGEN_CACHE_MB` | *auto* | prompt cache budget in MB — a byte budget, not a slot count; `0` disables |
+| `HALOGEN_MAX_TOKENS_CAP` | `65536` | largest `max_tokens` a request may ask for — over it is a **400**, never a silent truncation |
+| `HALOGEN_QUEUE_TIMEOUT` | `7200` | seconds a queued request will wait — **coupled to the cap**, see below |
 | `HALOGEN_KV_SLOTS` | `1` | concurrent resident sequences — see below |
 | `HALOGEN_SLOT_CTX` | `262144` | context each slot holds — see below |
 
@@ -295,6 +295,33 @@ rather than a guess about which you meant. `/health` lists all three under
 If a reply looks empty or cut off, read `finish_reason` first: `"stop"` means
 you have the whole answer, `"length"` means you ran out of budget. Pass a larger
 budget, or `"reasoning_effort": "low"` to make the model think less.
+
+The thinking controls — `reasoning_effort`, `enable_thinking`,
+`preserve_thinking` — are accepted at the top level of the request and also
+nested under `chat_template_kwargs`, the vLLM/SGLang spelling. Both reach the
+same template; if you send both they must agree, and an unsupported key under
+`chat_template_kwargs` is a 400 rather than a silent drop. Note that the
+template's own effort default is `xhigh`, so a request that sends nothing
+thinks at the most expensive setting. `"reasoning_effort": "none"` is
+thinking off, the same as `"enable_thinking": false`. The OpenAI `developer`
+role is accepted and rendered as `system`.
+
+`response_format` with `json_object` or `json_schema` is a **400**, not a
+silent drop: this build has no constrained decoding, so a schema could not be
+enforced and you would get prose with a 200. `/health` lists it under
+`not_implemented`. Prompt for JSON and validate the reply.
+
+Every response carries a `timings` object in llama-server's shape
+(`prompt_n`, `predicted_n`, `prompt_ms`, `predicted_ms`, the two rates,
+`cache_n`, `draft_n`, `draft_n_accepted`), copied from the engine's own
+accounting, so llama-swap and similar routers show real prefill and decode
+rates. `prompt_n` is the count the engine processed — the prompt minus what
+the cache covered — because that is what `prompt_ms` measures.
+
+Streaming responses send a `: keepalive` SSE comment after
+`HALOGEN_SSE_KEEPALIVE_S` (10) seconds of silence, so a long prefill does not
+trip a client's body timeout; and idle keep-alive connections live
+`HALOGEN_KEEPALIVE_TIMEOUT` (300) seconds rather than uvicorn's 5.
 
 ### Concurrency, and the one trap
 

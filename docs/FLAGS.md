@@ -47,7 +47,7 @@ documented as such.
 
 | flag | default | meaning |
 |---|---|---|
-| `HALOGEN_CACHE_MB` | *(empty = auto)* | Cache budget in MB. Empty means the engine sizes it from available memory at startup. `0` disables. A small explicit value yields a cache that reports itself enabled and never hits — one full-context entry is about 18.4 GB at 262K. |
+| `HALOGEN_CACHE_MB` | *(empty = auto)* | Cache budget in MB. Empty means the engine sizes it from available memory at startup. `0` disables. **This is a byte budget, not a slot count**: an entry costs memory in proportion to its own prompt (about 70 KB per token, so a 100K-token conversation is ~7 GB) and entries are evicted least-recently-used by bytes, so a budget that the startup line calls "room for 1.2 full entries" holds several ordinary conversations. The reserve (`HALOGEN_CACHE_RESERVE_MB`) is re-checked against live `MemAvailable` on every store, not only at startup. A value below one full-context entry (about 18.4 GB at 262K) means the deepest sessions are never cached. |
 | `HALOGEN_CACHE_ALIGN` | `2048` | Snapshot alignment. This value is what makes a warm answer byte-identical to a cold one; any other value is not. Do not change it. |
 | `HALOGEN_CACHE_RESERVE_MB` | `8192` | Memory left for the system when the cache sizes itself automatically. |
 
@@ -64,6 +64,15 @@ documented as such.
 |---|---|---|
 | `HALOGEN_W4A4` | `64` | Minimum rows for the int4 GEMM path used in prefill. `0` disables it entirely — slower, higher precision. Decode never crosses this threshold, so **decode is unaffected either way**. |
 | `HALOGEN_W4A4_EXCL` | `""` | Which weight planes are excluded from the int4 path. The image ships `""` (no exclusions), worth about **+9% prefill** against roughly **-0.45 pt** top-1 aggregate, with decode unharmed. This is the one default whose emitted tokens differ from the engine's built-in default; it does not affect speculation-equals-serial, warm-equals-cold, or batched-equals-solo. See the README to roll it back. |
+
+## Front-end
+
+| flag | default | meaning |
+|---|---|---|
+| `HALOGEN_KEEPALIVE_TIMEOUT` | `300` | Seconds an idle HTTP keep-alive connection lives. Raised from uvicorn's 5 s default because the usual client is an agent that idles for the length of a tool call between turns, and a `POST` on a closed pooled socket is not retried. |
+| `HALOGEN_SSE_KEEPALIVE_S` | `10` | Seconds of silence on a streaming response before a `: keepalive` SSE comment goes out. Invisible to SSE parsers; keeps a client's body timeout from firing during a long prefill. `0` disables. |
+| `HALOGEN_MODEL_ID` | `halogen-qwen3.8-27b` | The model id `/v1/models` lists and every response carries, for routers that key on it. |
+| `HALOGEN_IMAGE_VERSION` | *(set by the image)* | The release, stamped at build time. `/health.version` shows the front-end's and the engine's copies and whether they match. Not a knob: overriding it makes `/health` lie. |
 
 ## Optional model download
 
