@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.4 (unreleased)
+## 0.1.4
 
 A serving release: the first five issues filed against this repository, and a
 set of API-surface fixes carried over from a sibling project that found them
