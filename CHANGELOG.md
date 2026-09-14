@@ -1,5 +1,77 @@
 # Changelog
 
+## 0.1.4 (unreleased)
+
+A serving release: the first five issues filed against this repository, and a
+set of API-surface fixes carried over from a sibling project that found them
+first. **The kernels, the checkpoint format and the weights are unchanged**;
+upgrading is a container pull.
+
+### Fixed
+
+- **`drafter: "ngram"` was offered by `/health` and refused by the engine, and
+  the refusal blamed the prompt** (#1). The front-end carried a drafter table
+  the engine did not have. The engine now reports its drafter count and the
+  front-end advertises, accepts and names only those. Every engine refusal now
+  carries its reason in the 400's message — the same sentence the engine log
+  prints — instead of the old guess that the prompt was too long.
+
+- **`chat_template_kwargs` was accepted and ignored** (#2). The vLLM/SGLang
+  nesting of `enable_thinking`, `reasoning_effort` and `preserve_thinking` is
+  now read. A control sent both ways must agree (otherwise a 400), and an
+  unsupported key under `chat_template_kwargs` is a 400 naming the supported
+  set, never a silent drop. Note that the template's own effort default is
+  `xhigh`, so a request that sends nothing thinks at the most expensive
+  setting — which is what a nested `low` was silently getting.
+
+- **`role: "developer"` was refused with a 400** (#3). It is now rendered as
+  `system`.
+
+- **The README's configuration table showed the old defaults for
+  `HALOGEN_MAX_TOKENS_CAP` and `HALOGEN_QUEUE_TIMEOUT`** (#4). They are
+  `65536` and `7200`, as `docs/FLAGS.md`, the image and `/health` already said.
+
+- **The prompt-cache startup line read as a slot count** (#5). It printed
+  `1 x 262144-token entries` for what is a byte budget with entries sized to
+  their own prompt (about 70 KB per token), so a budget that "holds 1.2 full
+  entries" holds several ordinary conversations. The line now says so. The
+  reserve (`HALOGEN_CACHE_RESERVE_MB`) was already re-checked on every store,
+  not only at startup. No new flag.
+
+- **`response_format` with `json_object` or `json_schema` was accepted and
+  ignored.** It is now a 400: this build has no constrained decoding, so a
+  schema could not be enforced and the caller was getting prose with a 200.
+  `/health` lists it under `not_implemented`. `{"type": "text"}` is accepted.
+
+- **Idle keep-alive connections were closed after 5 seconds** (uvicorn's
+  default, never set). An agent that idled for one tool call between turns
+  found its pooled socket gone and its next `POST` failing, un-retried. Now
+  `HALOGEN_KEEPALIVE_TIMEOUT`, default 300 s.
+
+- **`reasoning_effort: "none"` was a 400.** It is thinking off, the same as
+  `enable_thinking: false`, and wins when both are sent.
+
+### Added
+
+- **`/health.version`** — `{"api": …, "engine": …, "match": true|false|null}`.
+  The image stamps its release; the engine and the front-end each report
+  theirs, and `match` says whether they agree. `null` when either side is
+  unknown.
+- **`timings`** on every response and on the final usage chunk of a stream, in
+  llama-server's shape (`prompt_n`, `predicted_n`, `prompt_ms`, `predicted_ms`,
+  the two rates, `cache_n`, `draft_n`, `draft_n_accepted`), copied from the
+  engine's own accounting. `prompt_n` is the count the engine processed — the
+  prompt minus what the cache covered — because that is what `prompt_ms`
+  measures. `usage` is unchanged.
+- **`: keepalive` SSE comments** after `HALOGEN_SSE_KEEPALIVE_S` (10) seconds
+  of silence on a stream, so a long prefill does not trip a client's body
+  timeout. Invisible to SSE parsers; `0` disables.
+- **`HALOGEN_MODEL_ID`** — the id `/v1/models` lists and responses carry, for
+  routers that key on it.
+- The server logs one line when a client hangs up mid-stream, with the frame
+  count, the largest gap and the time since the last frame — previously a
+  hangup and a clean finish were indistinguishable in the log.
+
 ## 0.1.3
 
 A serving bug-fix release. **The kernels, the checkpoint format and the weights
