@@ -4,8 +4,16 @@
 
 # halogen
 
-**The fastest way to run Qwen3.8-27B on AMD Strix Halo — at higher precision
-than anything that comes close.**
+> **Qwen3.8-27B has moved to [halogen 0.21.0](https://github.com/peonist-ai/halogen-flash-server)**
+> (`ghcr.io/peonist-ai/halogen-flash-server:0.21.0`), the same image that serves Qwen3.8-Flash-Next. It uses a new
+> 4-bit checkpoint, `qwen38-27b-ht4.hgn` from
+> [peonist-ai/halogen-qwen3.8-27b-ht4](https://huggingface.co/peonist-ai/halogen-qwen3.8-27b-ht4), adds image input and
+> LoRA adapters, and decodes about 40% faster than 0.1.4 on the same machines and prefills long prompts a few percent faster. The model id stays
+> `halogen-qwen3.8-27b`. This image, 0.1.4, stays published and keeps serving its own checkpoint, unchanged; new work
+> happens in halogen-flash-server.
+
+**halogen™ is the fastest way to run Qwen3.8-27B on AMD Strix Halo, at higher
+precision than anything that comes close.**
 
 Every kernel is written for this one GPU and this one model family. No
 general-purpose runtime, no portability layer, no fallback path — which is why
@@ -447,6 +455,11 @@ Free for any use, including commercial. Unmodified redistribution permitted.
 Benchmark publication expressly permitted. See [`LICENSE`](LICENSE.md) and
 [`THIRD-PARTY-NOTICES`](THIRD-PARTY-NOTICES.md), both also at `/licenses`
 inside the image.
+
+"halogen" and "Peonist" are trademarks of Peonist, LLC (U.S. application
+pending). [TRADEMARKS.md](TRADEMARKS.md) says how the names may be used;
+referring to the project, running it, and publishing numbers about it need
+no permission.
 
 **Model weights are not included and are not covered** by that license. They
 are obtained separately and licensed by their original authors.
